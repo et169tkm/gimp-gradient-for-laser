@@ -2,8 +2,10 @@
 
 from gimpfu import *
 
-def gradient_for_laser(img, layer, howmuch):
-    pass
+def gradient_for_laser(img, drawable):
+    pdb.gimp_message("hello")
+    
+    return
 
 register(
     "python_fu_gradient_for_laser",
@@ -11,10 +13,13 @@ register(
     "Eric Tang", "Eric Tang", "2015",
     "Gradient for laser",
     "RGB*",
-    [ (PF_INT, "amt", "How much?", 50) ],
+    [
+        (PF_IMAGE, "image", "Input image", None),
+        (PF_DRAWABLE, "drawable", "Input drawable", None),
+    ],
     [],       # return vals, seldom used
     gradient_for_laser,
-    menu = "<Image>/Filters/Enhance"
+    menu = "<Image>/Eric"
 )
 
 main()
