@@ -2,6 +2,40 @@
 
 from gimpfu import *
 
+
+class pixel_fetcher:
+    def __init__(self, drawable):
+        self.col = -1
+        self.row = -1
+        self.img_width = drawable.width
+        self.img_height = drawable.height
+        self.img_bpp = drawable.bpp
+        self.img_has_alpha = drawable.has_alpha
+        self.tile_width = gimp.tile_width()
+        self.tile_height = gimp.tile_height()
+        self.bg_colour = '\0\0\0\0'
+        self.bounds = drawable.mask_bounds
+        self.drawable = drawable
+        self.tile = None
+    def set_bg_colour(self, r, g, b, a):
+        self.bg_colour = struct.pack('BBB', r,g,b)
+        if self.img_has_alpha:
+            self.bg_colour = self.bg_colour + chr(a)
+    def get_pixel(self, x, y):
+        sel_x1, sel_y1, sel_x2, sel_y2 = self.bounds
+        if x < sel_x1 or x >= sel_x2 or y < sel_y1 or y >= sel_y2:
+            return self.bg_colour
+        col = x / self.tile_width
+        coloff = x % self.tile_width
+        row = y / self.tile_height
+        rowoff = y % self.tile_height
+
+        if col != self.col or row != self.row or self.tile == None:
+            self.tile = self.drawable.get_tile(False, row, col)
+            self.col = col
+            self.row = row
+        return self.tile[coloff, rowoff]
+
 def get_color(x, y, intensity):
     intensity_map = [
         [ # 0
