@@ -219,7 +219,7 @@ register(
     ],
     [],       # return vals, seldom used
     gradient_for_laser,
-    menu = "<Image>/Eric"
+    menu = "<Image>/Filters/Distorts"
 )
 
 main()
