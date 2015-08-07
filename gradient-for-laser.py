@@ -22,9 +22,6 @@ class pixel_fetcher:
         if self.img_has_alpha:
             self.bg_colour = self.bg_colour + chr(a)
     def get_pixel(self, x, y):
-        sel_x1, sel_y1, sel_x2, sel_y2 = self.bounds
-        if x < sel_x1 or x >= sel_x2 or y < sel_y1 or y >= sel_y2:
-            return self.bg_colour
         col = x / self.tile_width
         coloff = x % self.tile_width
         row = y / self.tile_height
@@ -36,7 +33,7 @@ class pixel_fetcher:
             self.row = row
         return self.tile[coloff, rowoff]
 
-def get_color(x, y, intensity):
+def get_color_at_pattern(x, y, intensity):
     intensity_map = [
         [ # 0
             [  0,   0,   0,   0],
@@ -141,23 +138,64 @@ def get_color(x, y, intensity):
             [255, 255, 255, 255],
         ],
     ]
-    return intensity_map[intensity][x%4][y%4]
+    c = ((intensity_map[intensity])[x%4])[y%4]
+    return c
 
 def gradient_for_laser(img, drawable):
     pdb.gimp_message("begin")
+    gimp.progress_init("running")
     
     # Set up an undo group, so the operation will be undone in one step.
     pdb.gimp_undo_push_group_start(img)
     
     destDrawable = gimp.Layer(img, "new layer", drawable.width, drawable.height, drawable.type, drawable.opacity, drawable.mode);
-    img.add_layer(destDrawable, 0)
-    dest_rgn = destDrawable.get_pixel_rgn(0, 0, drawable.width, drawable.height, True, True)
 
-    gimp.progress_init("running")
+    (x1, y1) = drawable.offsets
+    destDrawable.set_offsets(x1, y1)
+    
+    img.add_layer(destDrawable, 0)
+    dest_range = destDrawable.get_pixel_rgn(0, 0, drawable.width, drawable.height, True, True)
+
+    pf = pixel_fetcher(drawable)
     for y in range(0, destDrawable.height):
-        for x in range(0, 16):
-            dest_rgn[x, y] = chr(255) + '\0\0'# + chr(255)
-        gimp.progress_update(float(y) / destDrawable.height)
+        for x in range(0, destDrawable.width):
+            pixel = pf.get_pixel(x, y)
+            temp = ord(pixel)
+            #pdb.gimp_message("temp: %d" % temp)
+            temp = int(round(16.0 * temp / 255))
+            dest_range[x, y] = chr(get_color_at_pattern(x, y, temp))
+        gimp.progress_update(float(y) / drawable.height)
+
+# do it block by block (block = 4x4 pixels)
+#    image_pixel_count = drawable.width * drawable.height
+#    processed_pixel_count = 0
+#    block_pattern = 0
+#    block_intensity_total = 0
+#    block_pixel_count = 0
+#    block_width = 0
+#    block_height = 0
+#    
+#    
+#    for by in range(0, destDrawable.height, 4):
+#        for bx in range(0, destDrawable.width, 4):
+#            block_width = min(4, destDrawable.width - bx)
+#            block_height = min(4, destDrawable.height - by)
+#            block_pixel_count = block_width * block_height
+#            block_intensity_total = 0
+#            for y in range(0, block_height):
+#                for x in range(0, block_width):
+#                    pixel = pf.get_pixel(bx+x, by+y)
+#                    block_intensity_total = block_intensity_total + ord(pixel)
+#                    #dest_range[bx+x, by+y] = chr(127) # +  char(255) + '\0'# + chr(255)
+#            block_pattern = int(round(16*(block_intensity_total/block_pixel_count)/255))
+#            for y in range(0, block_height):
+#                for x in range(0, block_width):
+#                    temp = get_color_at_pattern(bx+x, by+y, block_pattern)
+#                    pdb.gimp_message("temp: %d" % temp)
+#                    dest_range[bx+x, by+y] = chr(get_color_at_pattern(bx+x, by+y, block_pattern))
+#
+#            processed_pixel_count = processed_pixel_count + block_pixel_count
+#            gimp.progress_update(float(processed_pixel_count) / image_pixel_count)
 
     destDrawable.flush()
     destDrawable.merge_shadow(True)
@@ -174,7 +212,7 @@ register(
     "Gradient for laser", "Gradient for laser",
     "Eric Tang", "Eric Tang", "2015",
     "Gradient for laser",
-    "RGB*",
+    "GRAY",
     [
         (PF_IMAGE, "image", "Input image", None),
         (PF_DRAWABLE, "drawable", "Input drawable", None),
